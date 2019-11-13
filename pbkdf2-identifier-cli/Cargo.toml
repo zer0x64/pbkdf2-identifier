@@ -1,6 +1,6 @@
 [package]
 name = "pbkdf2-identifier-cli"
-version = "0.1.0"
+version = "0.0.0"
 authors = ["zer0x64 <dugre.philippe@hotmail.com>"]
 edition = "2018"
 
