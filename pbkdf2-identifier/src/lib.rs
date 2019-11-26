@@ -1,12 +1,75 @@
-#![feature(test)]
-
 use std::cmp::min;
 
 use hmac::crypto_mac::generic_array::{sequence::GenericSequence, ArrayLength, GenericArray};
 use hmac::digest::{BlockInput, FixedOutput, Input, Reset};
 use hmac::{Hmac, Mac};
+use sha1::Sha1;
+use sha2::{Sha256, Sha512};
 
-/// Tries to find the iteration count of the hash knowing it's algorithm.
+/// A list of the hash algorithms to try
+static PRIMITIVES: &'static [HashPrimitive] = &[
+    HashPrimitive::HMACSHA1,
+    HashPrimitive::HMACSHA256,
+    HashPrimitive::HMACSHA512,
+];
+
+/// A wrapper around various common primitives used for PBKDF2.
+/// Implements a name and the closure to compute the values.
+/// This will later on be a userful abstraction when differentiating between webassembly and multithreaded code.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum HashPrimitive {
+    HMACSHA1,
+    HMACSHA256,
+    HMACSHA512,
+}
+
+impl HashPrimitive {
+    /// Returns a readable name for the primitive.
+    pub fn name(&self) -> &'static str {
+        match self {
+            HashPrimitive::HMACSHA1 => "HMAC-SHA1",
+            HashPrimitive::HMACSHA256 => "HMAC-SHA256",
+            HashPrimitive::HMACSHA512 => "HMAC-SHA512",
+        }
+    }
+
+    /// Returns a closure for identifying the iteration count for this specific algorithm.
+    pub fn identify(&self) -> Box<dyn Fn(&[u8], &[u8], &[u8], usize) -> usize> {
+        match self {
+            HashPrimitive::HMACSHA1 => Box::new(|password, hash, salt, max| {
+                identify_iterations::<Sha1>(password, hash, salt, max)
+            }),
+            HashPrimitive::HMACSHA256 => Box::new(|password, hash, salt, max| {
+                identify_iterations::<Sha256>(password, hash, salt, max)
+            }),
+            HashPrimitive::HMACSHA512 => Box::new(|password, hash, salt, max| {
+                identify_iterations::<Sha512>(password, hash, salt, max)
+            }),
+        }
+    }
+}
+
+/// Tries to find the iteration count and the hash algorithm of the hash.
+/// password - The password of the hash
+/// hash - The hash itself
+/// salt - The salt used in the derivation
+/// max - The maximum number of iteration to try. Use 0 to try until aborted.
+pub fn identify_all(
+    password: &[u8],
+    hash: &[u8],
+    salt: &[u8],
+    max: usize,
+) -> (HashPrimitive, usize) {
+    for primitive in PRIMITIVES {
+        match primitive.identify()(password, hash, salt, max) {
+            0 => continue,
+            iteration_count => return (*primitive, iteration_count),
+        }
+    }
+    (HashPrimitive::HMACSHA1, 0)
+}
+
+/// Tries to find the iteration count of the hash knowing its algorithm.
 /// password - The password of the hash
 /// hash - The hash itself
 /// salt - The salt used in the derivation
@@ -63,34 +126,46 @@ where
 
 #[cfg(test)]
 mod tests {
-    extern crate test;
-
-    use test::Bencher;
     use super::*;
-    use sha2::Sha256;
 
     #[test]
-    fn test() {
+    fn test_identify_iterations_shorter_block_size() {
         use base64;
-        use sha2::Sha256;
 
-        let iterations = identify_iterations::<Sha256>(
+        let iterations = identify_iterations::<Sha1>(
             "password".as_bytes(),
-            &base64::decode("rPfCAKgEnO/PJdkV7BP/1fTYZTzEiwHpXbO8VfYsLSk=").unwrap(),
-            &base64::decode("ScjYXMzBrWvaNypcuYYHoA==").unwrap(),
-            100000,
+            &base64::decode("EVeVmsezinX2Nv+J36elk6UA3mJFmJ4Nk2BWHnpbBCg=").unwrap(),
+            &base64::decode("akL5xcl1RwlmlfAxkGp1NA==").unwrap(),
+            1000,
         );
-        assert_eq!(iterations, 12345);
+        assert_eq!(iterations, 123);
     }
 
-    #[bench]
-    fn bench(b: &mut Bencher) {
-        b.iter(|| identify_iterations::<Sha256>(
+    #[test]
+    fn test_identify_iterations_longer_block_size() {
+        use base64;
+
+        let iterations = identify_iterations::<Sha512>(
             "password".as_bytes(),
-            &base64::decode("rPfCAKgEnO/PJdkV7BP/1fTYZTzEiwHpXbO8VfYsLSk=").unwrap(),
-            &base64::decode("ScjYXMzBrWvaNypcuYYHoA==").unwrap(),
-            100000,
-        ));
+            &base64::decode("oElyEp3GgQxwdfE6uKfLqz40XB9CTF3iP003JhLPCuc=").unwrap(),
+            &base64::decode("RtTNd9YXr4vQxiPQXooELA==").unwrap(),
+            1000,
+        );
+        assert_eq!(iterations, 123);
+    }
+
+    #[test]
+    fn test_identify_all() {
+        use base64;
+
+        let (primitive, iterations) = identify_all(
+            "password".as_bytes(),
+            &base64::decode("Qp+q3JTY/2gnTSRHRNgn3g==").unwrap(),
+            &base64::decode("al9TeCB42U/chevUbuaG1w==").unwrap(),
+            200,
+        );
+
+        assert_eq!(primitive, HashPrimitive::HMACSHA256);
+        assert_eq!(iterations, 125);
     }
 }
-
