@@ -1,6 +1,6 @@
 [package]
 name = "pbkdf2-identifier"
-version = "0.0.1"
+version = "0.0.2"
 license = "MIT OR Apache-2.0"
 description = "A crate to identify the parameters used to generate a PBKDF2 hash."
 repository = "https://github.com/zer0x64/pbkdf2-identifier"
