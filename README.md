@@ -1,3 +1,4 @@
+![](https://github.com/zer0x64/pbkdf2-identifier/workflows/Build/badge.svg)
 # PBKDF2-identifier
 
 This is a tool to identify the parameters used to generate a PBKDF2 hash. Useful to defeat the good old "Security by Obscurity".
