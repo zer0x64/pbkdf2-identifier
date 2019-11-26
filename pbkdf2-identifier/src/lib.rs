@@ -1,3 +1,5 @@
+#![feature(test)]
+
 use std::cmp::min;
 
 use hmac::crypto_mac::generic_array::{sequence::GenericSequence, ArrayLength, GenericArray};
@@ -59,16 +61,36 @@ where
     0
 }
 
-#[test]
-fn test() {
-    use base64;
+#[cfg(test)]
+mod tests {
+    extern crate test;
+
+    use test::Bencher;
+    use super::*;
     use sha2::Sha256;
 
-    let iterations = identify_iterations::<Sha256>(
-        "password".as_bytes(),
-        &base64::decode("rPfCAKgEnO/PJdkV7BP/1fTYZTzEiwHpXbO8VfYsLSk=").unwrap(),
-        &base64::decode("ScjYXMzBrWvaNypcuYYHoA==").unwrap(),
-        100000,
-    );
-    assert_eq!(iterations, 12345);
+    #[test]
+    fn test() {
+        use base64;
+        use sha2::Sha256;
+
+        let iterations = identify_iterations::<Sha256>(
+            "password".as_bytes(),
+            &base64::decode("rPfCAKgEnO/PJdkV7BP/1fTYZTzEiwHpXbO8VfYsLSk=").unwrap(),
+            &base64::decode("ScjYXMzBrWvaNypcuYYHoA==").unwrap(),
+            100000,
+        );
+        assert_eq!(iterations, 12345);
+    }
+
+    #[bench]
+    fn bench(b: &mut Bencher) {
+        b.iter(|| identify_iterations::<Sha256>(
+            "password".as_bytes(),
+            &base64::decode("rPfCAKgEnO/PJdkV7BP/1fTYZTzEiwHpXbO8VfYsLSk=").unwrap(),
+            &base64::decode("ScjYXMzBrWvaNypcuYYHoA==").unwrap(),
+            100000,
+        ));
+    }
 }
+
