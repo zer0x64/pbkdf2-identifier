@@ -34,7 +34,7 @@ impl HashPrimitive {
     }
 
     /// Returns a closure for identifying the iteration count for this specific algorithm.
-    pub fn identify(&self) -> Box<dyn Fn(&[u8], &[u8], &[u8], usize) -> usize> {
+    pub fn get_identifier(&self) -> Box<dyn Fn(&[u8], &[u8], &[u8], usize) -> usize> {
         match self {
             HashPrimitive::HMACSHA1 => Box::new(|password, hash, salt, max| {
                 identify_iterations::<Sha1>(password, hash, salt, max)
@@ -61,7 +61,7 @@ pub fn identify_all(
     max: usize,
 ) -> (HashPrimitive, usize) {
     for primitive in PRIMITIVES {
-        match primitive.identify()(password, hash, salt, max) {
+        match primitive.get_identifier()(password, hash, salt, max) {
             0 => continue,
             iteration_count => return (*primitive, iteration_count),
         }
