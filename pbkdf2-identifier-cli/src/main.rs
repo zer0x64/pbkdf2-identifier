@@ -138,7 +138,7 @@ fn main() {
         let algorithm = algorithm.expect("clap shouldn't let an invalid value pass here");
 
         // Get the closure for the primitive and run it.
-        let iterations = algorithm.identify()(password.as_bytes(), &hash, &salt, max);
+        let iterations = algorithm.get_identifier()(password.as_bytes(), &hash, &salt, max);
         if iterations == 0 {
             println!("Not found!")
         } else {

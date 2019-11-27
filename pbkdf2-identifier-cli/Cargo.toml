@@ -1,6 +1,6 @@
 [package]
 name = "pbkdf2-identifier-cli"
-version = "0.0.3"
+version = "0.0.4"
 readme = "../README.md"
 license = "MIT/Apache-2.0"
 description = "A crate to identify the parameters used to generate a PBKDF2 hash."
@@ -13,7 +13,7 @@ edition = "2018"
 base64 = "0.11.0"
 clap = "2.33.0"
 hex = "0.4.0"
-pbkdf2-identifier = "0.0.3"
+pbkdf2-identifier = "0.0.4"
 
 [[bin]]
 name = "pbkdf2-identifier"
