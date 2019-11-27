@@ -7,7 +7,7 @@ use sha1::Sha1;
 use sha2::{Sha256, Sha512};
 
 /// A list of the hash algorithms to try
-static PRIMITIVES: &'static [HashPrimitive] = &[
+pub static PRIMITIVES: &'static [HashPrimitive] = &[
     HashPrimitive::HMACSHA1,
     HashPrimitive::HMACSHA256,
     HashPrimitive::HMACSHA512,
