@@ -7,9 +7,13 @@ This will also eventually be made as a webassembly module.
 
 # How to use
 If you don't know the algorithm:
-`pbkdf2-identifier -p password123 -m 1000 -H ir/kfDpM5af8tVwGbeRgDA== -s L1q4pm5kD3cu1G9ByIx5Lw==`
+```
+pbkdf2-identifier -p password123 -m 1000 -H ir/kfDpM5af8tVwGbeRgDA== -s L1q4pm5kD3cu1G9ByIx5Lw==
+```
 If you already know the algorithm:
-`pbkdf2-identifier -p password123 -m 1000 -H 8abfe47c3a4ce5a7fcb55c066de4600c -s 2f5ab8a66e640f772ed46f41c88c792f -f hex -a HMAC-SHA512`
+```
+pbkdf2-identifier -p password123 -m 1000 -H 8abfe47c3a4ce5a7fcb55c066de4600c -s 2f5ab8a66e640f772ed46f41c88c792f -f hex -a HMAC-SHA512
+```
 
 ## License
 
