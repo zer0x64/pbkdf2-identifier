@@ -13,7 +13,7 @@ edition = "2018"
 base64 = "0.11.0"
 clap = "2.33.0"
 hex = "0.4.0"
-pbkdf2-identifier = "0.3"
+pbkdf2-identifier = {version="0.0.3", path="../pbkdf2-identifier"}
 
 [[bin]]
 name = "pbkdf2-identifier"
