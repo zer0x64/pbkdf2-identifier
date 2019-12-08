@@ -4,12 +4,12 @@ use clap::{App, Arg};
 
 fn main() {
     let mut primitive_names = vec!["all"];
-    for primitive in pbkdf2_identifier::PRIMITIVES {
+    for primitive in pbkdf2_identifier::hash_primitive::PRIMITIVES {
         primitive_names.push(primitive.name());
     }
 
     let matches = App::new("PBKDF2 Identifier")
-        .version("0.2")
+        .version(env!("CARGO_PKG_VERSION"))
         .author("zer0x64")
         .about(
             "Helps you find the parameters used to generate a PBKDF2 hash to break the \
@@ -47,9 +47,8 @@ fn main() {
                 .short("m")
                 .long("max")
                 .value_name("max")
-                .help("The max number of iteration to check. Use 0 for infinity.")
-                .takes_value(true)
-                .default_value("0"),
+                .help("The max number of iteration to check.")
+                .takes_value(true),
         )
         .arg(
             Arg::with_name("format")
@@ -75,13 +74,13 @@ fn main() {
 
     let max = match matches.value_of("max") {
         Some(max) => match max.parse() {
-            Ok(max) => max,
+            Ok(max) => Some(max),
             Err(_) => {
                 println!("Please enter an integer value for the 'max' parameter");
                 return;
             }
         },
-        None => 0,
+        None => None,
     };
 
     let password = matches.value_of("password").unwrap();
@@ -126,22 +125,21 @@ fn main() {
 
     if algorithm_name == "all" {
         // Brute-force the algorithm
-        let (algorithm, iterations) =
-            pbkdf2_identifier::identify_all(password.as_bytes(), &hash, &salt, max);
-        if iterations == 0 {
-            println!("Not found!")
-        } else {
-            println!(
-                "Found!\nAlgorithm: {}\nIterations: {}",
-                algorithm.name(),
-                iterations
-            );
+        match pbkdf2_identifier::identify_all(password.as_bytes(), &hash, &salt, max) {
+            Some((algorithm, iterations)) => {
+                println!(
+                    "Found!\nAlgorithm: {}\nIterations: {}",
+                    algorithm.name(),
+                    iterations
+                );
+            },
+            None => println!("Not found!")
         }
     } else {
         // Finds the corresponding value
         let mut algorithm = None;
 
-        for alg in pbkdf2_identifier::PRIMITIVES {
+        for alg in pbkdf2_identifier::hash_primitive::PRIMITIVES {
             if alg.name() == algorithm_name {
                 algorithm = Some(alg);
                 break;
@@ -151,15 +149,15 @@ fn main() {
         let algorithm = algorithm.expect("clap shouldn't let an invalid value pass here");
 
         // Get the closure for the primitive and run it.
-        let iterations = algorithm.get_identifier()(password.as_bytes(), &hash, &salt, max);
-        if iterations == 0 {
-            println!("Not found!")
-        } else {
-            println!(
-                "Found!\nAlgorithm: {}\nIterations: {}",
-                algorithm.name(),
-                iterations
-            );
+        match algorithm.get_identifier()(password.as_bytes(), &hash, &salt, max) {
+            Some(iterations) => {
+                println!(
+                    "Found!\nAlgorithm: {}\nIterations: {}",
+                    algorithm.name(),
+                    iterations
+                );
+            },
+            None => println!("Not found!")
         }
     }
 }
