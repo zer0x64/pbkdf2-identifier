@@ -13,6 +13,10 @@ edition = "2018"
 hmac = "0.7.1"
 sha-1 = "0.8.1"
 sha2 = "0.8.0"
+cfg-if = "0.1.10"
+
+[target.'cfg(not(target_arch="wasm32"))'.dependencies]
+rayon = "1.2.1"
 
 [dev-dependencies]
 base64 = "0.11.0"

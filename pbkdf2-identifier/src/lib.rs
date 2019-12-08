@@ -1,10 +1,16 @@
 use std::cmp::min;
 
+#[cfg(not(target_arch="wasm32"))]
+use rayon::prelude::*;
+
 use hmac::crypto_mac::generic_array::{sequence::GenericSequence, ArrayLength, GenericArray};
 use hmac::digest::{BlockInput, FixedOutput, Input, Reset};
 use hmac::{Hmac, Mac};
 use sha1::Sha1;
 use sha2::{Sha256, Sha512};
+
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 /// A list of the hash algorithms to try
 pub static PRIMITIVES: &'static [HashPrimitive] = &[
@@ -34,16 +40,16 @@ impl HashPrimitive {
     }
 
     /// Returns a closure for identifying the iteration count for this specific algorithm.
-    pub fn get_identifier(&self) -> Box<dyn Fn(&[u8], &[u8], &[u8], usize) -> usize> {
+    pub fn get_identifier(&self) -> Box<dyn Fn(&[u8], &[u8], &[u8], usize, &AtomicBool) -> usize> {
         match self {
-            HashPrimitive::HMACSHA1 => Box::new(|password, hash, salt, max| {
-                identify_iterations::<Sha1>(password, hash, salt, max)
+            HashPrimitive::HMACSHA1 => Box::new(|password, hash, salt, max, found| {
+                identify_iterations_threaded::<Sha1>(password, hash, salt, max, found)
             }),
-            HashPrimitive::HMACSHA256 => Box::new(|password, hash, salt, max| {
-                identify_iterations::<Sha256>(password, hash, salt, max)
+            HashPrimitive::HMACSHA256 => Box::new(|password, hash, salt, max, found| {
+                identify_iterations_threaded::<Sha256>(password, hash, salt, max, found)
             }),
-            HashPrimitive::HMACSHA512 => Box::new(|password, hash, salt, max| {
-                identify_iterations::<Sha512>(password, hash, salt, max)
+            HashPrimitive::HMACSHA512 => Box::new(|password, hash, salt, max, found| {
+                identify_iterations_threaded::<Sha512>(password, hash, salt, max, found)
             }),
         }
     }
@@ -60,12 +66,30 @@ pub fn identify_all(
     salt: &[u8],
     max: usize,
 ) -> (HashPrimitive, usize) {
-    for primitive in PRIMITIVES {
-        match primitive.get_identifier()(password, hash, salt, max) {
-            0 => continue,
-            iteration_count => return (*primitive, iteration_count),
+    let found = Arc::new(AtomicBool::new(false));
+    let runner = |primitive: &HashPrimitive| {
+        let (p, i) = (*primitive, primitive.get_identifier()(password, hash, salt, max, &found.clone()));
+        match i {
+            0 => None,
+            _ => Some((p, i))
+        }
+    };
+
+    cfg_if::cfg_if!{
+        if #[cfg(not(target_arch="wasm32"))] {
+            let iter = PRIMITIVES.into_par_iter();
+            if let Some(result) = iter.find_map_any(runner) {
+                return result;
+            }
+        }
+        else {
+            let mut iter = PRIMITIVES.into_iter();
+            if let Some(result) = iter.find_map(runner) {
+                return result;
+            }
         }
     }
+
     (HashPrimitive::HMACSHA1, 0)
 }
 
@@ -74,11 +98,27 @@ pub fn identify_all(
 /// hash - The hash itself
 /// salt - The salt used in the derivation
 /// max - The maximum number of iteration to try. Use 0 to try until aborted.
-pub fn identify_iterations<T>(password: &[u8], hash: &[u8], salt: &[u8], mut max: usize) -> usize
+pub fn identify_iterations<T>(password: &[u8], hash: &[u8], salt: &[u8], max: usize) -> usize
 where
     T: Input + BlockInput + FixedOutput + Reset + Default + Clone,
     T::BlockSize: ArrayLength<u8>,
     T::OutputSize: ArrayLength<u8>,
+{
+    let found = Arc::new(AtomicBool::new(false));
+    identify_iterations_threaded::<T>(password, hash, salt, max, &found)
+}
+
+/// Tries to find the iteration count of the hash knowing its algorithm. Takes an shared variable to know when to stop searching.
+/// password - The password of the hash
+/// hash - The hash itself
+/// salt - The salt used in the derivation
+/// max - The maximum number of iteration to try. Use 0 to try until aborted.
+/// found - Shared variable to notify other threads if the hash has been identified.  
+pub fn identify_iterations_threaded<T>(password: &[u8], hash: &[u8], salt: &[u8], mut max: usize, found: &AtomicBool) -> usize
+    where
+        T: Input + BlockInput + FixedOutput + Reset + Default + Clone,
+        T::BlockSize: ArrayLength<u8>,
+        T::OutputSize: ArrayLength<u8>,
 {
     // The accumulator is XORed after each iteration and compared to the value expected
     let mut accumulator = GenericArray::<u8, T::OutputSize>::generate(|_| 0);
@@ -117,7 +157,12 @@ where
 
         // Returns the iteration count if found
         if is_equal {
+            found.store(true, Ordering::Relaxed);
             return i;
+        }
+
+        if found.load(Ordering::Relaxed) {
+            break;
         }
     }
 
