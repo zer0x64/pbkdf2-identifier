@@ -28,7 +28,7 @@ pub fn identify_all(
     let runner = |primitive: &HashPrimitive| {
         Some((
             *primitive,
-            primitive.get_identifier()(password, hash, salt, max, &found.clone())?,
+            primitive.get_identifier_threaded()(password, hash, salt, max, &found.clone())?,
         ))
     };
 

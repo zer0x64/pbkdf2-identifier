@@ -3,7 +3,7 @@ use std::sync::atomic::AtomicBool;
 use sha1::Sha1;
 use sha2::{Sha224, Sha256, Sha384, Sha512};
 
-use super::identify_iterations_threaded;
+use super::{ identify_iterations, identify_iterations_threaded };
 
 /// A list of the hash algorithms to try
 pub static PRIMITIVES: &'static [HashPrimitive] = &[
@@ -40,6 +40,29 @@ impl HashPrimitive {
 
     /// Returns a closure for identifying the iteration count for this specific algorithm.
     pub fn get_identifier(
+        &self,
+    ) -> Box<dyn Fn(&[u8], &[u8], &[u8], Option<usize>) -> Option<usize>> {
+        match self {
+            HashPrimitive::HMACSHA1 => Box::new(|password, hash, salt, max| {
+                identify_iterations::<Sha1>(password, hash, salt, max)
+            }),
+            HashPrimitive::HMACSHA224 => Box::new(|password, hash, salt, max| {
+                identify_iterations::<Sha224>(password, hash, salt, max)
+            }),
+            HashPrimitive::HMACSHA256 => Box::new(|password, hash, salt, max| {
+                identify_iterations::<Sha256>(password, hash, salt, max)
+            }),
+            HashPrimitive::HMACSHA384 => Box::new(|password, hash, salt, max| {
+                identify_iterations::<Sha384>(password, hash, salt, max)
+            }),
+            HashPrimitive::HMACSHA512 => Box::new(|password, hash, salt, max| {
+                identify_iterations::<Sha512>(password, hash, salt, max)
+            }),
+        }
+    }
+
+    /// Returns a closure for identifying the iteration count for this specific algorithm.
+    pub fn get_identifier_threaded(
         &self,
     ) -> Box<dyn Fn(&[u8], &[u8], &[u8], Option<usize>, &AtomicBool) -> Option<usize>> {
         match self {
