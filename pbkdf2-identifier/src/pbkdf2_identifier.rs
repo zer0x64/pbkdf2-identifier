@@ -12,7 +12,6 @@ use std::sync::Arc;
 
 use crate::hash_primitive::{HashPrimitive, PRIMITIVES};
 
-
 /// Tries to find the iteration count and the hash algorithm of the hash.
 /// password - The password of the hash
 /// hash - The hash itself
@@ -38,7 +37,7 @@ pub fn identify_all(
             return PRIMITIVES.into_par_iter().find_map_any(runner);
         }
         else {
-            return PRIMITIVES.into_iter().iter.find_map(runner);
+            return PRIMITIVES.into_iter().find_map(runner);
         }
     }
 }

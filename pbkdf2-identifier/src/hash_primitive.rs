@@ -3,6 +3,9 @@ use std::sync::atomic::AtomicBool;
 use sha1::Sha1;
 use sha2::{Sha224, Sha256, Sha384, Sha512};
 
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
+
 use super::{ identify_iterations, identify_iterations_threaded };
 
 /// A list of the hash algorithms to try
@@ -17,6 +20,7 @@ pub static PRIMITIVES: &'static [HashPrimitive] = &[
 /// A wrapper around various common primitives used for PBKDF2.
 /// Implements a name and the closure to compute the values.
 /// This will later on be a userful abstraction when differentiating between webassembly and multithreaded code.
+#[cfg_attr(target_arch = "wasm32",wasm_bindgen)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum HashPrimitive {
     HMACSHA1,
