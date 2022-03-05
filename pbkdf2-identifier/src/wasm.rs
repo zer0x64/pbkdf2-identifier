@@ -21,15 +21,13 @@ pub fn identify_all(
     hash: &[u8],
     salt: &[u8],
     max: Option<usize>,
-    ) -> Option<Pbkdf2Parameters> {
+) -> Option<Pbkdf2Parameters> {
     match crate::identify_all(password, hash, salt, Some(max.unwrap_or(MAX_DEFAULT))) {
         None => None,
-        Some((primitive, iterations)) => {
-            Some(Pbkdf2Parameters {
-                primitive,
-                iterations,
-            })
-        }
+        Some((primitive, iterations)) => Some(Pbkdf2Parameters {
+            primitive,
+            iterations,
+        }),
     }
 }
 

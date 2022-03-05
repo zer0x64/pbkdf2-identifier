@@ -1,7 +1,7 @@
 use std::cmp::min;
 
-#[cfg(not(target_arch = "wasm32"))]
-use rayon::prelude::*;
+#[cfg(feature = "parallel")]
+use std::thread;
 
 use hmac::crypto_mac::generic_array::{sequence::GenericSequence, ArrayLength, GenericArray};
 use hmac::digest::{BlockInput, FixedOutput, Input, Reset};
@@ -23,22 +23,61 @@ pub fn identify_all(
     salt: &[u8],
     max: Option<usize>,
 ) -> Option<(HashPrimitive, usize)> {
-    let found = Arc::new(AtomicBool::new(false));
-    let runner = |primitive: &HashPrimitive| {
-        Some((
-            *primitive,
-            primitive.get_identifier_threaded()(password, hash, salt, max, &found.clone())?,
-        ))
-    };
+    identify_algorithms(password, hash, salt, max, PRIMITIVES.to_vec())
+}
 
-    // WASM doesn't "really" support threads for now, so this operation is not multithreaded in that case
-    cfg_if::cfg_if! {
-        if #[cfg(not(target_arch="wasm32"))] {
-            return PRIMITIVES.into_par_iter().find_map_any(runner);
+pub fn identify_algorithms(
+    password: &[u8],
+    hash: &[u8],
+    salt: &[u8],
+    max: Option<usize>,
+    algorithms: Vec<HashPrimitive>,
+) -> Option<(HashPrimitive, usize)> {
+    let found = Arc::new(AtomicBool::new(false));
+
+    #[cfg(feature = "parallel")]
+    {
+        let password = Arc::new(password.to_vec());
+        let hash = Arc::new(hash.to_vec());
+        let salt = Arc::new(salt.to_vec());
+
+        let threads_handles: Vec<_> = algorithms
+            .into_iter()
+            .map(|primitive| {
+                let password = password.clone();
+                let hash = hash.clone();
+                let salt = salt.clone();
+                let found = found.clone();
+                thread::spawn(move || {
+                    Some((
+                        primitive,
+                        primitive.get_identifier_threaded()(&password, &hash, &salt, max, &found)?,
+                    ))
+                })
+            })
+            .collect();
+
+        let mut result = None;
+        for t in threads_handles {
+            match t.join() {
+                Ok(Some(x)) => result = Some(x),
+                _ => {}
+            };
         }
-        else {
-            return PRIMITIVES.into_iter().find_map(runner);
+
+        result
+    }
+
+    #[cfg(not(feature = "parallel"))]
+    {
+        for p in PRIMITIVES {
+            match p.get_identifier_threaded()(&password, &hash, &salt, max, &found) {
+                Some(x) => return Some((*p, x)),
+                _ => {}
+            }
         }
+
+        None
     }
 }
 
@@ -53,10 +92,10 @@ pub fn identify_iterations<T>(
     salt: &[u8],
     max: Option<usize>,
 ) -> Option<usize>
-    where
-        T: Input + BlockInput + FixedOutput + Reset + Default + Clone,
-        T::BlockSize: ArrayLength<u8>,
-        T::OutputSize: ArrayLength<u8>,
+where
+    T: Input + BlockInput + FixedOutput + Reset + Default + Clone,
+    T::BlockSize: ArrayLength<u8>,
+    T::OutputSize: ArrayLength<u8>,
 {
     let found = Arc::new(AtomicBool::new(false));
     identify_iterations_threaded::<T>(password, hash, salt, max, &found)
@@ -75,10 +114,10 @@ pub fn identify_iterations_threaded<T>(
     max: Option<usize>,
     found: &AtomicBool,
 ) -> Option<usize>
-    where
-        T: Input + BlockInput + FixedOutput + Reset + Default + Clone,
-        T::BlockSize: ArrayLength<u8>,
-        T::OutputSize: ArrayLength<u8>,
+where
+    T: Input + BlockInput + FixedOutput + Reset + Default + Clone,
+    T::BlockSize: ArrayLength<u8>,
+    T::OutputSize: ArrayLength<u8>,
 {
     // The accumulator is XORed after each iteration and compared to the value expected
     let mut accumulator = GenericArray::<u8, T::OutputSize>::generate(|_| 0);
@@ -142,7 +181,7 @@ mod tests {
             &base64::decode("akL5xcl1RwlmlfAxkGp1NA==").unwrap(),
             None,
         )
-            .unwrap();
+        .unwrap();
         assert_eq!(iterations, 123);
     }
 
@@ -157,7 +196,7 @@ mod tests {
             &base64::decode("RtTNd9YXr4vQxiPQXooELA==").unwrap(),
             None,
         )
-            .unwrap();
+        .unwrap();
         assert_eq!(iterations, 123);
     }
 
@@ -171,7 +210,7 @@ mod tests {
             &base64::decode("al9TeCB42U/chevUbuaG1w==").unwrap(),
             None,
         )
-            .unwrap();
+        .unwrap();
 
         assert_eq!(primitive, HashPrimitive::HMACSHA256);
         assert_eq!(iterations, 125);

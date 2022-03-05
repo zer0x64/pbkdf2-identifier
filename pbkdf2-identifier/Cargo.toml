@@ -1,13 +1,13 @@
 [package]
 name = "pbkdf2-identifier"
-version = "0.0.6"
+version = "0.0.7"
 readme = "../README.md"
 license = "MIT/Apache-2.0"
 description = "A crate to identify the parameters used to generate a PBKDF2 hash."
 repository = "https://github.com/zer0x64/pbkdf2-identifier"
 homepage = "https://github.com/zer0x64/pbkdf2-identifier"
 authors = ["zer0x64"]
-edition = "2018"
+edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -17,12 +17,12 @@ hmac = "0.7.1"
 sha-1 = "0.8.1"
 sha2 = "0.8.0"
 cfg-if = "0.1.10"
+wasm-bindgen = { version = "0.2.55", optional = true }
 
-[target.'cfg(not(target_arch="wasm32"))'.dependencies]
-rayon = "1.2.1"
-
-[target.'cfg(target_arch="wasm32")'.dependencies]
-wasm-bindgen = "0.2.55"
+[features]
+default = []
+parallel = []
+wbindgen = ["wasm-bindgen"]
 
 [dev-dependencies]
 base64 = "0.11.0"

@@ -1,4 +1,4 @@
-use std::sync::atomic::AtomicBool;
+use std::{str::FromStr, sync::atomic::AtomicBool};
 
 use sha1::Sha1;
 use sha2::{Sha224, Sha256, Sha384, Sha512};
@@ -6,7 +6,7 @@ use sha2::{Sha224, Sha256, Sha384, Sha512};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
-use super::{ identify_iterations, identify_iterations_threaded };
+use super::{identify_iterations, identify_iterations_threaded};
 
 /// A list of the hash algorithms to try
 pub static PRIMITIVES: &'static [HashPrimitive] = &[
@@ -20,7 +20,7 @@ pub static PRIMITIVES: &'static [HashPrimitive] = &[
 /// A wrapper around various common primitives used for PBKDF2.
 /// Implements a name and the closure to compute the values.
 /// This will later on be a userful abstraction when differentiating between webassembly and multithreaded code.
-#[cfg_attr(target_arch = "wasm32",wasm_bindgen)]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum HashPrimitive {
     HMACSHA1,
@@ -28,6 +28,21 @@ pub enum HashPrimitive {
     HMACSHA256,
     HMACSHA384,
     HMACSHA512,
+}
+
+impl FromStr for HashPrimitive {
+    type Err = std::fmt::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "hmacsha1" => Ok(Self::HMACSHA1),
+            "hmacsha224" => Ok(Self::HMACSHA224),
+            "hmacsha256" => Ok(Self::HMACSHA256),
+            "hmacsha384" => Ok(Self::HMACSHA384),
+            "hmacsha512" => Ok(Self::HMACSHA512),
+            _ => Err(std::fmt::Error::default()),
+        }
+    }
 }
 
 impl HashPrimitive {
