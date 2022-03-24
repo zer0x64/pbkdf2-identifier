@@ -12,7 +12,7 @@ jobs:
     - name: Build Lib
       run: cd pbkdf2-identifier && cargo build --verbose
     - name: Run Lib Tests
-      run: cd pbkdf2-identifier && cargo test --verbose
+      run: cd pbkdf2-identifier && cargo test --features parallel --verbose
     - name: Build CLI
       run: cd pbkdf2-identifier-cli && cargo build --verbose
     - name: Run CLI Tests
