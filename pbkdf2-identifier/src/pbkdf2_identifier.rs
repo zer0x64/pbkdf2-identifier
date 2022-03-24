@@ -1,7 +1,7 @@
 use std::cmp::min;
 
 #[cfg(feature = "parallel")]
-use std::thread;
+use crossbeam::thread;
 
 use hmac::crypto_mac::generic_array::{sequence::GenericSequence, ArrayLength, GenericArray};
 use hmac::digest::{BlockInput, FixedOutput, Input, Reset};
@@ -37,35 +37,32 @@ pub fn identify_algorithms(
 
     #[cfg(feature = "parallel")]
     {
-        let password = Arc::new(password.to_vec());
-        let hash = Arc::new(hash.to_vec());
-        let salt = Arc::new(salt.to_vec());
-
-        let threads_handles: Vec<_> = algorithms
-            .into_iter()
-            .map(|primitive| {
-                let password = password.clone();
-                let hash = hash.clone();
-                let salt = salt.clone();
-                let found = found.clone();
-                thread::spawn(move || {
-                    Some((
-                        primitive,
-                        primitive.get_identifier_threaded()(&password, &hash, &salt, max, &found)?,
-                    ))
+        thread::scope(|s| {
+            let threads_handles: Vec<_> = algorithms
+                .into_iter()
+                .map(|primitive| {
+                    let found = found.clone();
+                    s.spawn(move |_| {
+                        Some((
+                            primitive,
+                            primitive.get_identifier_threaded()(
+                                &password, &hash, &salt, max, &found,
+                            )?,
+                        ))
+                    })
                 })
-            })
-            .collect();
+                .collect();
 
-        let mut result = None;
-        for t in threads_handles {
-            match t.join() {
-                Ok(Some(x)) => result = Some(x),
-                _ => {}
-            };
-        }
+            for t in threads_handles {
+                match t.join() {
+                    Ok(Some(x)) => return Some(x),
+                    _ => {}
+                };
+            }
 
-        result
+            None
+        })
+        .expect("Thread crashed!")
     }
 
     #[cfg(not(feature = "parallel"))]

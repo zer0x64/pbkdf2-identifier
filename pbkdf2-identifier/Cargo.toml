@@ -17,6 +17,7 @@ hmac = "0.7.1"
 sha-1 = "0.8.1"
 sha2 = "0.8.0"
 cfg-if = "0.1.10"
+crossbeam = "0.8.1"
 wasm-bindgen = { version = "0.2.55", optional = true }
 
 [features]

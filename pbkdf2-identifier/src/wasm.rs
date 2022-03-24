@@ -16,22 +16,6 @@ pub fn primitive_name(p: HashPrimitive) -> String {
 }
 
 #[wasm_bindgen]
-pub fn identify_all(
-    password: &[u8],
-    hash: &[u8],
-    salt: &[u8],
-    max: Option<usize>,
-) -> Option<Pbkdf2Parameters> {
-    match crate::identify_all(password, hash, salt, Some(max.unwrap_or(MAX_DEFAULT))) {
-        None => None,
-        Some((primitive, iterations)) => Some(Pbkdf2Parameters {
-            primitive,
-            iterations,
-        }),
-    }
-}
-
-#[wasm_bindgen]
 pub fn identify_iterations(
     password: &[u8],
     hash: &[u8],
