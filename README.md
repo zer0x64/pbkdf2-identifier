@@ -2,8 +2,9 @@
 # PBKDF2-identifier
 
 This is a tool to identify the parameters used to generate a PBKDF2 hash. Useful to defeat the good old "Security by Obscurity".
-It is able to determine the number of iteration and the underlying algorithm. This currently supports `HMAC-SHA1`, `HMAC-SHA256` and `HMAC-SHA512`. Also, this will eventually be multithreaded when not in webassembly.
-This will also eventually be made as a webassembly module.
+It is able to determine the number of iteration and the underlying algorithm. This currently supports `HMAC-SHA1`, `HMAX-SHA224`, `HMAC-SHA256`, `HMAC-SHA384` and `HMAC-SHA512`.
+
+You can use it online here: [PBKDF2 Identifier](https://zer0x64.github.io/projects/pbkdf2-identifier/)
 
 # How to use
 If you don't know the algorithm:
